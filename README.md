@@ -1,1 +1,5 @@
-# ML-run_viola-jones
+# Require
+
+pip install opencv-python
+pip install numpy
+pip install matplotlib
