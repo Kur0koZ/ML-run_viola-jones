@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 #import matplotlib      # บรรทัด 5-6 ใช้อันนี้ถ้ารันแล้วยังเกิด Error อยู่ <เก็บไว้เป็นแผนสำรอง> 
-#matplotlib.use('Agg')
+#matplotlib.use('Agg')  # ถ้าใช้ตัวเดิมได้ อันนี้ไม่ต้องใช้ลบตัวนี้ทิ้งได้เลย
 import matplotlib.pyplot as plt
 
 def haar_edge_h(ii, x, y, w, h):
@@ -451,7 +451,7 @@ def save_result(img_gray, boxes):
 
 
 def main():
-    WIN = 24
+    WIN = 24 # <ปรับค่าสี่เหลี่ยมตรวจจับ> ยิ่งปรับค่ามาก สี่เหลี่ยมที่ตรวจจับจะน้อยลงตามค่าที่ปรับ
     STEP = 4
 
     print("=" * 70)
