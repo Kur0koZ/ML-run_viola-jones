@@ -1,9 +1,7 @@
-# run_viola-jones.py
+# run_viola-jones.py <ของสไลด์ไฟล์อาจารย์>
 
 import cv2
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def haar_edge_h(ii, x, y, w, h):
