@@ -26,7 +26,6 @@ def haarEdgeHorizontal(integralImage, x, y, width, height):
 
     return white - black
 
-#################################################################################
 
 def haarEdgeVertical(integralImage, x, y, width, height):
 
@@ -50,7 +49,6 @@ def haarEdgeVertical(integralImage, x, y, width, height):
 
     return white - black
 
-#################################################################################
 
 def haarLineVertical(integralImage, x, y, width, height):
 
@@ -82,7 +80,6 @@ def haarLineVertical(integralImage, x, y, width, height):
 
     return (left + right) - mid
 
-#################################################################################
 
 def haarFour(integralImage, x, y, width, height):
 
@@ -124,7 +121,6 @@ def haarFour(integralImage, x, y, width, height):
 
     return (tLeft + bRight) - (tRight + bLeft)
 
-#################################################################################
 
 def haarFeatureValue(integralImage, x, y, width, height, kind):
 
@@ -143,7 +139,6 @@ def haarFeatureValue(integralImage, x, y, width, height, kind):
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
-#################################################################################
 
 def buildIntegralImage(gray):
 
@@ -152,19 +147,15 @@ def buildIntegralImage(gray):
 
     return integralImage
 
-#################################################################################
 
 def rectangleSum(integralImage, x1, y1, x2, y2):
 
     return integralImage[y2 + 1, x2 + 1] - integralImage[y1, x2 + 1] - integralImage[y2 + 1, x1] + integralImage[y1, x1]
 
-#################################################################################
 
 def weakClassify(value, threshold, polarity):
 
     return 1 if polarity * value < polarity * threshold else 0
-
-#################################################################################
 
 def bestThresholdForFeature(values, labels, weights):
 
@@ -194,7 +185,6 @@ def bestThresholdForFeature(values, labels, weights):
 
         return value[index2], -1, errNeg1[index2]
 
-#################################################################################
 
 def buildFeatureBank(nFeature = 60, window = 24, seed = 42):
 
@@ -227,14 +217,12 @@ def buildFeatureBank(nFeature = 60, window = 24, seed = 42):
 
     return bank
 
-#################################################################################
 
 def extractAllFeature(integralImageWindow, featureBank):
 
     return np.array([haarFeatureValue(integralImageWindow, x, y, width, height, kind)
                      for (kind, x, y, width, height) in featureBank])
 
-#################################################################################
 
 def trainAdaBoost(x, labels, nRound):
 
@@ -275,7 +263,6 @@ def trainAdaBoost(x, labels, nRound):
 
     return ensemble
 
-#################################################################################
 
 def strongClassify(ensemble, featureValue):
 
@@ -297,7 +284,6 @@ def trainCascade(x, labels, stageRound = (3, 6)): # default: x, labels, stageRou
 
     return cascade
 
-#################################################################################
 
 def cascadeClassify(cascade, featureValue):
 
@@ -309,7 +295,6 @@ def cascadeClassify(cascade, featureValue):
 
     return 1 # it's a face, approve
 
-#################################################################################
 
 def slidingWindowDetection(imageGray, cascade, featureBank, window = 24, step = 4):
 
@@ -341,7 +326,6 @@ def slidingWindowDetection(imageGray, cascade, featureBank, window = 24, step = 
 
     return detection
 
-#################################################################################
 
 def mergeBox(box, window):
 
@@ -369,7 +353,6 @@ def mergeBox(box, window):
 
     return merged
 
-#################################################################################
 
 def makeSyntheticFace(size = 24, noise = 0):
 
@@ -397,7 +380,6 @@ def makeSyntheticFace(size = 24, noise = 0):
 
     return image
 
-#################################################################################
 
 def makeSyntheticBackground(size = 24, seed = None):
 
@@ -427,7 +409,6 @@ def makeSyntheticBackground(size = 24, seed = None):
 
     return image
 
-#################################################################################
 
 def buildTrainingSet(nPositive = 40, nNegative = 60, window = 24):
 
@@ -465,7 +446,6 @@ def createDataset(window):
 
     return image, label
 
-#################################################################################
 
 def createFeature(window):
 
@@ -480,7 +460,6 @@ def createFeature(window):
 
     return featureBank
 
-#################################################################################
 
 def extractFeature(image, featureBank):
 
@@ -502,7 +481,6 @@ def extractFeature(image, featureBank):
 
     return x
 
-#################################################################################
 
 def trainModel(x, label):
 
@@ -519,7 +497,6 @@ def trainModel(x, label):
 
     return cascade
 
-#################################################################################
 
 def testModel(cascade, featureBank, window):
 
@@ -546,13 +523,12 @@ def testModel(cascade, featureBank, window):
 
     print(f"\tresult: {status}")
 
-#################################################################################
 
 def detectFace(cascade, featureBank, window, step):
 
     print(f"\n[6] detect face in real image..")
 
-    imagePath = "myimage2.png" # inputImage
+    imagePath = "PONG.png" # inputImage
 
     imageGray = cv2.imread(
         imagePath,
@@ -613,7 +589,7 @@ def saveResult(imageGray, box):
             2
         )
 
-    outputPath = "myimage2Result.png" # outputImage
+    outputPath = "PONG_Result.png" # outputImage
 
     cv2.imwrite(
         outputPath,
@@ -639,15 +615,14 @@ def saveResult(imageGray, box):
     plt.axis("off")
     plt.show()
 
-#################################################################################
 
 def main():
 
-    window = 24 # default: 24
+    window = 138 # default: 24
     step = 4 # default: 4
 
     print("=" * 70)
-    print("VIOLA-JONES FACE DETECTION")
+    print("PONG FACE DETECTION")
     print("=" * 70)
 
     image, label = createDataset(window)
@@ -659,7 +634,6 @@ def main():
 
     print("\nfinished")
 
-#################################################################################
 
 if __name__ == "__main__":
     main()
