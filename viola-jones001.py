@@ -2,437 +2,627 @@
 
 import cv2
 import numpy as np
-#import matplotlib      # บรรทัด 5-6 ใช้อันนี้ถ้ารันแล้วยังเกิด Error อยู่ <เก็บไว้เป็นแผนสำรอง> 
-#matplotlib.use('Agg')  # ถ้าใช้ตัวเดิมได้ อันนี้ไม่ต้องใช้ลบตัวนี้ทิ้งได้เลย
 import matplotlib.pyplot as plt
 
-def haar_edge_h(ii, x, y, w, h):
-    half = h // 2
-    white = rect_sum(ii, x, y, x + w - 1, y + half - 1)
-    black = rect_sum(ii, x, y + half, x + w - 1, y + h - 1)
+def haarEdgeHorizontal(integralImage, x, y, width, height):
+    
+    half = height // 2 # หารเอาส่วน
+
+    white = rectangleSum(
+        integralImage,
+        x,
+        y,
+        x + width - 1,
+        y + half - 1
+    )
+
+    black = rectangleSum(
+        integralImage,
+        x + half,
+        y,
+        x + width - 1,
+        y + height - 1
+    )
+
     return white - black
 
+#################################################################################
 
-def haar_edge_v(ii, x, y, w, h):
-    half = w // 2
-    white = rect_sum(ii, x, y, x + half - 1, y + h - 1)
-    black = rect_sum(ii, x + half, y, x + w - 1, y + h - 1)
+def haarEdgeVertical(integralImage, x, y, width, height):
+
+    half = width // 2
+
+    white = rectangleSum(
+        integralImage,
+        x,
+        y,
+        x + half - 1,
+        y + height - 1
+    )
+
+    black = rectangleSum(
+        integralImage,
+        x + half,
+        y,
+        x + width - 1,
+        y + height - 1
+    )
+
     return white - black
 
+#################################################################################
 
-def haar_line_v(ii, x, y, w, h):
-    third = w // 3
-    left = rect_sum(ii, x, y, x + third - 1, y + h - 1)
-    mid = rect_sum(ii, x + 2 * third, y, x + w - 1, y + h - 1)
-    right = rect_sum(ii, x + 2 * third, y, x + w - 1, y + h - 1)
+def haarLineVertical(integralImage, x, y, width, height):
+
+    third = width // 3
+
+    left = rectangleSum(
+        integralImage,
+        x,
+        y,
+        x + third - 1,
+        y + height - 1
+    )
+
+    mid = rectangleSum(
+        integralImage,
+        x + third,
+        y,
+        x + 2 * third - 1,
+        y + height - 1
+    )
+
+    right = rectangleSum(
+        integralImage,
+        x + 2 * third,
+        y,
+        x + width - 1,
+        y + height - 1
+    )
+
     return (left + right) - mid
 
+#################################################################################
 
-def haar_four(ii, x, y, w, h):
-    hw, hh = w // 2, h // 2
-    tl = rect_sum(ii, x, y, x + hw - 1, y + hh - 1)
-    tr = rect_sum(ii, x + hw, y, x + w - 1, y + hh - 1)
-    bl = rect_sum(ii, x, y + hh, x + hw - 1, y + h - 1)
-    br = rect_sum(ii, x + hw, y + hh, x + w - 1, y + h - 1)
-    return (tl + br) - (tr + bl)
+def haarFour(integralImage, x, y, width, height):
 
-def haar_feature_value(ii, x, y, w, h, kind):
-    if kind == "edge_h":
-        return haar_edge_h(ii, x, y, w, h)
-    elif kind == "edge_v":
-        return haar_edge_v(ii, x, y, w, h)
-    elif kind == "line_v":
-        return haar_line_v(ii, x, y, w, h)
+    # t left & t right | b left & b right
+
+    halfWidth, halfHeight = width // 2, height // 2
+
+    tLeft = rectangleSum(
+        integralImage,
+        x,
+        y,
+        x + halfWidth - 1,
+        y + halfHeight - 1
+    )
+    
+    tRight = rectangleSum(
+        integralImage,
+        x + halfWidth,
+        y,
+        x + width - 1,
+        y + halfHeight - 1
+    )
+
+    bLeft = rectangleSum(
+        integralImage,
+        x,
+        y + halfHeight,
+        x + halfWidth - 1,
+        y + height - 1
+    )
+
+    bRight = rectangleSum(
+        integralImage,
+        x + halfWidth,
+        y + halfHeight,
+        x + width - 1,
+        y + height - 1
+    )
+
+    return (tLeft + bRight) - (tRight + bLeft)
+
+#################################################################################
+
+def haarFeatureValue(integralImage, x, y, width, height, kind):
+
+    if kind == "edgeHorizontal":
+        return haarEdgeHorizontal(integralImage, x, y, width, height)
+    
+    elif kind == "edgeVertical":
+        return haarEdgeVertical(integralImage, x, y, width, height)
+
+    elif kind == "lineVertical":
+        return haarLineVertical(integralImage, x, y, width, height)
+
     elif kind == "four":
-        return haar_four(ii, x, y, w, h)
+        return haarFour(integralImage, x, y, width, height)
+
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
+#################################################################################
 
-def build_integral_image(gray):
-    ii = np.cumsum(np.cumsum(gray.astype(np.float64), axis=0), axis=1)
-    ii = np.pad(ii, ((1, 0), (1, 0)), mode="constant")
-    return ii
+def buildIntegralImage(gray):
 
+    integralImage = np.cumsum(np.cumsum(gray.astype(np.float64), axis = 0), axis = 1)
+    integralImage = np.pad(integralImage, ((1, 0), (1, 0)), mode = "constant")
 
-def rect_sum(ii, x1, y1, x2, y2):
-    return ii[y2 + 1, x2 + 1] - ii[y1, x2 + 1] - ii[y2 + 1, x1] + ii[y1, x1]
+    return integralImage
 
+#################################################################################
 
-def weak_classify(value, threshold, polarity):
+def rectangleSum(integralImage, x1, y1, x2, y2):
+
+    return integralImage[y2 + 1, x2 + 1] - integralImage[y1, x2 + 1] - integralImage[y2 + 1, x1] + integralImage[y1, x1]
+
+#################################################################################
+
+def weakClassify(value, threshold, polarity):
+
     return 1 if polarity * value < polarity * threshold else 0
 
+#################################################################################
 
-def best_threshold_for_feature(values, labels, weights):
+def bestThresholdForFeature(values, labels, weights):
+
     order = np.argsort(values)
-    v, y, w = values[order], labels[order], weights[order]
+    value, y, width = values[order], labels[order], weights[order]
 
-    total_pos = np.sum(w[y == 1])
-    total_neg = np.sum(w[y == 0])
+    totalPos = np.sum(width[y == 1])
+    totalNeg = np.sum(width[y == 0])
 
-    cum_pos = np.cumsum(np.where(y == 1, w, 0))
-    cum_neg = np.cumsum(np.where(y == 0, w, 0))
+    cumPos = np.cumsum(np.where(y == 1, width, 0))
+    cumNeg = np.cumsum(np.where(y == 0, width, 0))
 
-    # Error when polarity = +1
-    err_p1 = cum_neg + (total_pos - cum_pos)
-    # Error when polarity = -1
-    err_m1 = cum_pos + (total_neg - cum_neg)
+    # error when polarity = +1
+    errPos1 = cumNeg + (totalPos - cumPos)
 
-    i1 = np.argmin(err_p1)
-    i2 = np.argmin(err_m1)
+    # error when polarity = -1
+    errNeg1 = cumPos + (totalNeg - cumNeg)
 
-    if err_p1[i1] <= err_m1[i2]:
-        return v[i1], 1, err_p1[i1]
+    index1 = np.argmin(errPos1)
+    index2 = np.argmin(errNeg1)
+
+    if errPos1[index1] <= errNeg1[index2]:
+
+        return value[index1], 1, errPos1[index1]
+
     else:
-        return v[i2], -1, err_m1[i2]
 
+        return value[index2], -1, errNeg1[index2]
 
-def build_feature_bank(n_features=60, win=24, seed=42):
+#################################################################################
+
+def buildFeatureBank(nFeature = 60, window = 24, seed = 42):
+
     rng = np.random.default_rng(seed)
-    kinds = ["edge_h", "edge_v", "line_v", "four"]
+    kinds = ["edgeHorizontal", "edgeVertical", "lineVertical", "four"]
     bank = []
 
-    for _ in range(n_features):
+    for _ in range(nFeature):
+
         kind = rng.choice(kinds)
-        w = int(rng.integers(win // 3, win + 1))
-        h = int(rng.integers(win // 3, win + 1))
+        width = int(rng.integers(window // 3, window + 1))
+        height = int(rng.integers(window // 3, window + 1))
 
-    # adjustsize todivisible
-    if kind == "line_v":
-            w -= w % 3
-            w = max(w, 3)
-    else:
-            w -= w % 2
-            h -= h % 2
-            w, h = max(w, 2), max(h, 2)
+        # adjust size to divisible
 
-    x = int(rng.integers(0, win - w + 1))
-    y = int(rng.integers(0, win - h + 1))
-    bank.append((kind, x, y, w, h))
+        if kind == "lineVertical":
+
+            width -= width % 3
+            width = max(width, 3)
+
+        else:
+
+            width -= width % 2
+            height -= height % 2
+            width, height = max(width, 2), max(height, 2)
+
+        x = int(rng.integers(0, window - width + 1))
+        y = int(rng.integers(0, window - height + 1))
+        bank.append((kind, x, y, width, height))
 
     return bank
 
+#################################################################################
 
-def extract_all_features(ii_win, feature_bank):
-    return np.array([haar_feature_value(ii_win, x, y, w, h, kind)
-                    for (kind, x, y, w, h) in feature_bank])
+def extractAllFeature(integralImageWindow, featureBank):
 
+    return np.array([haarFeatureValue(integralImageWindow, x, y, width, height, kind)
+                     for (kind, x, y, width, height) in featureBank])
 
-def train_adaboost(X, labels, n_rounds):
+#################################################################################
+
+def trainAdaBoost(x, labels, nRound):
+
     n = len(labels)
-    weights = np.full(n, 1.0 / n)  # initial weights are equal
+    weight = np.full(n, 1.0 / n) # initail weight are equal
     ensemble = []
 
-    for rnd in range(n_rounds):
-        weights /= weights.sum()  # Normalize
+    for round in range(nRound):
+
+        weight /= weight.sum() # normalizing
         best = (None, None, None, np.inf, None)
 
-    # test every feature
-    for f in range(X.shape[1]):
-            thr, pol, err = best_threshold_for_feature(X[:, f], labels, weights)
+        # test every feature
+
+        for f in range(x.shape[1]):
+
+            threshold, polarity, err = bestThresholdForFeature(x[:, f], labels, weight)
+
             if err < best[3]:
-                best = (f, thr, pol, err, None)
 
-    f_idx, thr, pol, err, _ = best
-    err = np.clip(err, 1e-10, 1 - 1e-10)
+                best = (f, threshold, polarity, err, None)
 
-    # calculate Alpha: α = ½·ln((1-ε)/ε)
-    alpha = 0.5 * np.log((1 - err) / err)
-    ensemble.append((f_idx, thr, pol, alpha))
+        fIndex, threshold, polarity, err, _ = best
+        err = np.clip(err, 1e-10, 1 - 1e-10)
 
-    # updateweight
-    preds = np.array([weak_classify(v, thr, pol) for v in X[:, f_idx]])
-    correct = preds == labels
-    weights[correct] *= np.exp(-alpha)   # correct -> decrease weight
-    weights[~correct] *= np.exp(alpha)   # incorrect -> increase weight
+        # calculate alpha: α = 1 / 2 * ln((1 - ε) / ε)
+        alpha = 0.5 * np.log((1 - err) / err)
+        ensemble.append((fIndex, threshold, polarity, alpha))
 
-    print(f" Round {rnd+1}: feature#{f_idx}, threshold={thr:.4f}, "
-          f"polarity={pol}, error={err:.4f}, alpha={alpha:.4f}")
+        # update weight
+        predict = np.array([weakClassify(value, threshold, polarity) for value in x[:, fIndex]])
+        correct = predict == labels
+        weight[correct] *= np.exp(-alpha) # correct -> decrease weight
+        weight[~correct] *= np.exp(alpha) # incorrect -> increase weight
+
+        print(f"\tround {round + 1}: feature #{fIndex}, threshold = {threshold:.4f}, "
+              f"polarity = {polarity}, error = {err:.4f}, alpha = {alpha:.4f}")
 
     return ensemble
 
+#################################################################################
 
-def strong_classify(ensemble, feature_values):
-    total = sum(alpha * weak_classify(feature_values[f], thr, pol)
-                for f, thr, pol, alpha in ensemble)
-    alpha_sum = sum(alpha for _, _, _, alpha in ensemble)
-    return 1 if total >= 0.5 * alpha_sum else 0
+def strongClassify(ensemble, featureValue):
 
+    total = sum(alpha * weakClassify(featureValue[f], threshold, polarity)
+                for f, threshold, polarity, alpha in ensemble)
 
-def train_cascade(X, labels, stage_rounds=(3, 6)):
+    alphaSum = sum(alpha for _, _, _, alpha in ensemble)
+
+    return 1 if total >= 0.5 * alphaSum else 0
+
+def trainCascade(x, labels, stageRound = (3, 6)): # default: x, labels, stageRound = (3, 6)
+
     cascade = []
-    for i, n_rounds in enumerate(stage_rounds):
-        print(f"\n--- Training Stage {i+1} ({n_rounds} rounds) ---")
-        ensemble = train_adaboost(X, labels, n_rounds)
+    for i, nRound in enumerate(stageRound):
+
+        print(f"\nTraining stage {i + 1} ({nRound} Rounds)")
+        ensemble = trainAdaBoost(x, labels, nRound)
         cascade.append(ensemble)
+
     return cascade
 
+#################################################################################
 
-def cascade_classify(cascade, feature_values):
+def cascadeClassify(cascade, featureValue):
+
     for stage in cascade:
-        if strong_classify(stage, feature_values) == 0:
-            return 0  # ❌ Reject
-    return 1  # ✅ Yesface
 
+        if strongClassify(stage, featureValue) == 0:
 
-def sliding_window_detection(img_gray, cascade, feature_bank, win=24, step=4):
-    H, W = img_gray.shape
-    detections = []
-    total_windows = ((H - win) // step) * ((W - win) // step)
+            return 0 # it's not a face, reject
 
-    for y in range(0, H - win, step):
-        for x in range(0, W - win, step):
-            # reject Sub-window
-            crop = img_gray[y:y + win, x:x + win]
+    return 1 # it's a face, approve
 
-            # create Integral Image
-            ii_crop = build_integral_image(crop)
+#################################################################################
 
-            # extract Features
-            fvals = extract_all_features(ii_crop, feature_bank)
+def slidingWindowDetection(imageGray, cascade, featureBank, window = 24, step = 4):
 
-            # checkusing Cascade
-            if cascade_classify(cascade, fvals) == 1:
-                detections.append((x, y, win, win))
+    height, width = imageGray.shape
+    detection = []
+    totalWindow = ((height - window) // step) * ((width - window) // step)
 
-    return detections
+    for y in range(0, height - window, step):
 
+        for x in range(0, width - window, step):
 
-def merge_boxes(boxes, win):
-    if not boxes:
+            # reject sub-window
+
+            crop = imageGray[y:y + window, x:x + window]
+
+            # create integral image
+
+            integralImageCrop = buildIntegralImage(crop)
+
+            # extract feature
+
+            featureValue = extractAllFeature(integralImageCrop, featureBank)
+
+            # check using cascade
+
+            if cascadeClassify(cascade, featureValue) == 1:
+
+                detection.append((x, y, window, window))
+
+    return detection
+
+#################################################################################
+
+def mergeBox(box, window):
+
+    if not box:
+
         return []
 
-    boxes = np.array(boxes)
-    centers = boxes[:, :2] + win // 2
-    used = np.zeros(len(boxes), dtype=bool)
+    box = np.array(box)
+    center = box[:, :2] + window // 2
+    used = np.zeros(len(box), dtype = bool)
     merged = []
 
-    for i in range(len(boxes)):
+    for i in range(len(box)):
+
         if used[i]:
+
             continue
-        close = np.linalg.norm(centers - centers[i], axis=1) < win
-        group = boxes[close & ~used]
+
+        close = np.linalg.norm(center - center[i], axis = 1) < window
+        group = box[close & ~used]
         used[close] = True
-        gx = int(np.mean(group[:, 0]))
-        gy = int(np.mean(group[:, 1]))
-        merged.append((gx, gy, win, win))
+        groupX = int(np.mean(group[:, 0]))
+        groupY = int(np.mean(group[:, 1]))
+        merged.append((groupX, groupY, window, window))
 
     return merged
 
-def make_synthetic_face(size=24, noise=0):
-    img = np.full((size, size), 190, dtype=np.uint8)
-    cx, cy = size // 2, size // 2
-    eg = size // 4
+#################################################################################
+
+def makeSyntheticFace(size = 24, noise = 0):
+
+    image = np.full((size, size), 190, dtype = np.uint8)
+    cropX, cropY = size // 2, size // 2
+    example = size // 4
 
     # round face
-    cv2.ellipse(img, (cx, cy), (size // 2 - 2, size // 2 - 1), 0, 0, 360, 205, -1)
+
+    cv2.ellipse(image, (cropX, cropY), (size // 2 - 2, size // 2 - 1), 0, 0, 360, 205, -1)
 
     # eyes (dark)
-    cv2.circle(img, (cx - eg, cy - 2), max(2, size // 10), 40, -1)
-    cv2.circle(img, (cx + eg, cy - 2), max(2, size // 10), 40, -1)
+
+    cv2.circle(image, (cropX - example, cropY - 2), max(2, size // 10), 40, -1)
+    cv2.circle(image, (cropX + example, cropY - 2), max(2, size // 10), 40, -1)
 
     # nose
-    cv2.line(img, (cx, cy + 1), (cx, cy + size // 5), 150, 1)
+
+    cv2.line(image, (cropX, cropY + 1), (cropX, cropY + size // 5), 150, 1)
 
     if noise:
-        img = img.astype(np.int16) + np.random.randint(-noise, noise + 1, img.shape)
-        img = np.clip(img, 0, 255).astype(np.uint8)
 
-    return img
+        image = image.astype(np.int16) + np.random.randint(-noise, noise + 1, image.shape)
+        image = np.clip(image, 0, 255).astype(np.uint8)
 
+    return image
 
-def make_synthetic_background(size=24, seed=None):
+#################################################################################
+
+def makeSyntheticBackground(size = 24, seed = None):
+
     rng = np.random.default_rng(seed)
     kind = rng.integers(0, 3)
-    img = np.full((size, size), int(rng.integers(60, 220)), dtype=np.uint8)
+    image = np.full((size, size), int(rng.integers(60, 220)), dtype = np.uint8)
 
-    if kind == 0:  # line pattern
+    if kind == 0: # line pattern
+
         step = rng.integers(3, 8)
+
         for i in range(0, size, step):
-            cv2.line(img, (0, i), (size, i), int(rng.integers(30, 230)), 1)
-    elif kind == 1:  # rectangles
+
+            cv2.line(image, (0, i), (size, i), int(rng.integers(30, 230)), 1)
+
+    elif kind == 1: # rectangle
+
         for _ in range(4):
-            pt1 = tuple(rng.integers(0, size, 2))
-            pt2 = tuple(rng.integers(0, size, 2))
-            cv2.rectangle(img, pt1, pt2, int(rng.integers(30, 230)), -1)
-    else:  # Noise
-        img = rng.integers(0, 255, (size, size), dtype=np.uint8)
 
-    return img
+            part1 = tuple(rng.integers(0, size, 2))
+            part2 = tuple(rng.integers(0, size, 2))
+            cv2.rectangle(image, part1, part2, int(rng.integers(30, 230)), -1)
 
+    else: # noise
 
-def build_training_set(n_pos=40, n_neg=60, win=24):
+        image = rng.integers(0, 255, (size, size), dtype = np.uint8)
+
+    return image
+
+#################################################################################
+
+def buildTrainingSet(nPositive = 40, nNegative = 60, window = 24):
+
     rng = np.random.default_rng(0)
-    positives, negatives = [], []
+    positive, negative = [], []
 
-    for _ in range(n_pos):
-        cx = win // 2 + int(rng.integers(-1, 2))
-        cy = win // 2 + int(rng.integers(-1, 2))
-        eg = win // 4 + int(rng.integers(-1, 2))
-        positives.append(make_synthetic_face(win, noise=8))
+    for i in range(nPositive):
 
-    for i in range(n_neg):
-        negatives.append(make_synthetic_background(win, seed=i))
+        cropX = window // 2 + int(rng.integers(-1, 2))
+        cropY = window // 2 + int(rng.integers(-1, 2))
+        example = window // 4 + int(rng.integers(-1, 2))
+        positive.append(makeSyntheticFace(window, noise = 8))
 
-    X_imgs = positives + negatives
-    y = np.array([1] * n_pos + [0] * n_neg)
-    return X_imgs, y
+    for i in range(nNegative):
 
+        negative.append(makeSyntheticBackground(window, seed = i))
 
-def create_dataset(win):
-    print("\n[1] Create synthetic dataset...")
+    xImage = positive + negative
+    y = np.array([1] * nPositive + [0] * nNegative)
 
-    imgs, labels = build_training_set(
-        n_pos=40,
-        n_neg=60,
-        win=win
+    return xImage, y
+
+def createDataset(window):
+
+    print(f"\n[1] creating synthetic dataset...")
+
+    image, label = buildTrainingSet(
+        nPositive = 40, # default: 40
+        nNegative = 60, # default: 60
+        window = window
     )
 
-    print(f"  Face images: {np.sum(labels == 1)}")
-    print(f"  Non-face images: {np.sum(labels == 0)}")
+    print(f"\tface image: {np.sum(label == 1)}")
+    print(f"\tnon-face image: {np.sum(label == 0)}")
 
-    return imgs, labels
+    return image, label
 
+#################################################################################
 
-def create_features(win):
-    print("\n[2] Build Feature Bank...")
+def createFeature(window):
 
-    feature_bank = build_feature_bank(
-        n_features=60,
-        win=win
+    print(f"\n[2] build feature bank...")
+
+    featureBank = buildFeatureBank(
+        nFeature = 60,
+        window = window
     )
 
-    print(f"  Number of features: {len(feature_bank)}")
+    print(f"\tnumber of feature: {len(featureBank)}")
 
-    return feature_bank
+    return featureBank
 
-def extract_features(imgs, feature_bank):
-    print("\n[3] Calculate features...")
+#################################################################################
 
-    X = np.zeros(
-        (len(imgs), len(feature_bank))
+def extractFeature(image, featureBank):
+
+    print(f"\n[3] calculate feature...")
+
+    x = np.zeros(
+        (len(image), len(featureBank))
     )
 
-    for i, im in enumerate(imgs):
-        ii = build_integral_image(im)
-        X[i] = extract_all_features(
-            ii,
-            feature_bank
+    for i, im in enumerate(image):
+
+        integralImage = buildIntegralImage(im)
+        x[i] = extractAllFeature(
+            integralImage,
+            featureBank
         )
 
-    print(f"  Feature matrix: {X.shape}")
+    print(f"\tfeature matrix: {x.shape}")
 
-    return X
+    return x
 
+#################################################################################
 
-def train_model(X, labels):
-    print("\n[4] Train Cascade...")
+def trainModel(x, label):
 
-    cascade = train_cascade(
-        X,
-        labels,
-        stage_rounds=(3, 8)
+    print(f"\n[4] train cascade..")
+
+    cascade = trainCascade(
+        x,
+        label,
+        stageRound = (3, 8) # default: 3, 8
     )
 
-    print(f"  Number of stages: {len(cascade)}")
+
+    print(f"\nnumber of stage: {len(cascade)}")
 
     return cascade
 
+#################################################################################
 
-def test_model(cascade, feature_bank, win):
-    print("\n[5] Test on synthetic image...")
+def testModel(cascade, featureBank, window):
 
-    test_img = make_synthetic_face(
-        win,
-        noise=5
+    print(f"\n[5] test on synthetic image..")
+
+    testImage = makeSyntheticFace(
+        window,
+        noise = 5
     )
 
-    ii = build_integral_image(test_img)
+    integralImage = buildIntegralImage(testImage)
 
-    fvals = extract_all_features(
-        ii,
-        feature_bank
+    fValue = extractAllFeature(
+        integralImage,
+        featureBank
     )
 
-    result = cascade_classify(
+    result = cascadeClassify(
         cascade,
-        fvals
+        fValue
     )
 
-    status = "Face" if result == 1 else "Non-face"
+    status = "face" if result == 1 else "not-face"
 
-    print(f"  Result: {status}")
+    print(f"\tresult: {status}")
 
+#################################################################################
 
-def detect_faces(cascade, feature_bank, win, step):
-    print("\n[6] Detect faces in real image...")
+def detectFace(cascade, featureBank, window, step):
 
-    image_path = "lena_gray-1.png" # ที่ใส่ชื่อภาพไว้ที่จะตรวจจับ
+    print(f"\n[6] detect face in real image..")
 
-    img_gray = cv2.imread(
-        image_path,
+    imagePath = "myimage2.png" # inputImage
+
+    imageGray = cv2.imread(
+        imagePath,
         cv2.IMREAD_GRAYSCALE
     )
 
-    if img_gray is None:
+    if imageGray is None:
+
         raise FileNotFoundError(
-            f"Image not found: {image_path}"
+            f"\timage not found: {imagePath}"
         )
 
-    img_gray = cv2.resize(
-        img_gray,
-        (256, 256)
+    imageGray = cv2.resize(
+        imageGray,
+        (256, 256) # resize image to (default: (256, 256))
     )
 
-    print(f"  Loaded image: {image_path}")
+    print(f"\tloaded image: {imagePath}")
 
-    detections = sliding_window_detection(
-        img_gray,
+    detection = slidingWindowDetection(
+        imageGray,
         cascade,
-        feature_bank,
-        win,
+        featureBank,
+        window,
         step
     )
 
-    merged = merge_boxes(
-        detections,
-        win
+    merged = mergeBox(
+        detection,
+        window
     )
 
-    print(f"  Detected faces: {len(merged)}")
+    print(f"\tdetected face: {len(merged)}")
 
-    save_result(
-        img_gray,
+    saveResult(
+        imageGray,
         merged
     )
 
-def save_result(img_gray, boxes):
-    print("\n[7] Save and display results...")
+#################################################################################
+
+def saveResult(imageGray, box):
+
+    print(f"\n[7] save and display result..")
 
     result = cv2.cvtColor(
-        img_gray,
+        imageGray,
         cv2.COLOR_GRAY2BGR
     )
 
-    for x, y, w, h in boxes:
+    for x, y, width, height in box:
+
         cv2.rectangle(
             result,
             (x, y),
-            (x + w, y + h),
+            (x + width, y + height),
             (0, 255, 0),
             2
         )
 
-    output_path = "viola_jones_result.png"
+    outputPath = "myimage2Result.png" # outputImage
 
     cv2.imwrite(
-        output_path,
+        outputPath,
         result
     )
 
-    print(f"  Saved image: {output_path}")
+    print(f"\tsaved image: {outputPath}")
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize = (8, 8))
 
     plt.imshow(
         cv2.cvtColor(
@@ -442,30 +632,34 @@ def save_result(img_gray, boxes):
     )
 
     plt.title(
-        f"Viola-Jones Face Detection - "
-        f"{len(boxes)} faces detected"
+        f"viola-jone face detection - "
+        f"{len(box)} face detected"
     )
 
     plt.axis("off")
     plt.show()
 
+#################################################################################
 
 def main():
-    WIN = 117 # Default 24 <ปรับค่าสี่เหลี่ยมตรวจจับ> ยิ่งปรับค่ามาก สี่เหลี่ยมที่ตรวจจับจะน้อยลงตามค่าที่ปรับ
-    STEP = 4
+
+    window = 24 # default: 24
+    step = 4 # default: 4
 
     print("=" * 70)
     print("VIOLA-JONES FACE DETECTION")
     print("=" * 70)
 
-    imgs, labels = create_dataset(WIN)
-    feature_bank = create_features(WIN)
-    X = extract_features(imgs, feature_bank)
-    cascade = train_model(X, labels)
-    test_model(cascade, feature_bank, WIN)
-    detect_faces(cascade, feature_bank, WIN, STEP)
+    image, label = createDataset(window)
+    featureBank = createFeature(window)
+    x = extractFeature(image, featureBank)
+    cascade = trainModel(x, label)
+    testModel(cascade, featureBank, window)
+    detectFace(cascade, featureBank, window, step)
 
-    print("\nFinished!")
+    print("\nfinished")
+
+#################################################################################
 
 if __name__ == "__main__":
     main()
